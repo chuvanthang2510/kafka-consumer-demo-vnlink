@@ -28,7 +28,7 @@ public class TransactionListener {
         // Submit task vào thread pool để xử lý giao dịch không đồng bộ
         threadPoolConfigService.submitTask(() -> {
             try {
-                // Xử lý giao dịch
+                // Xử lý giao dịch chu van thang
                 transactionService.processTransaction(message);
 
                 // Nếu xử lý thành công, commit offset
