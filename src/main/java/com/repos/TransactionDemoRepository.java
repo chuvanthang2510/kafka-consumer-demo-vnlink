@@ -1,9 +1,9 @@
 package com.repos;
 
-import com.entitys.TransactionErrorLog;
+import com.entitys.TransactionDemo;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface TransactionErrorLogRepository extends JpaRepository<TransactionErrorLog, String> {
-}
+public interface TransactionDemoRepository extends JpaRepository<TransactionDemo, String> {
+} 

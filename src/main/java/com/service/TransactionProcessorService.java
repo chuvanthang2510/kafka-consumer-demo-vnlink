@@ -2,19 +2,24 @@ package com.service;
 
 import com.entitys.TransactionErrorLog;
 import com.entitys.TransactionMessage;
+import com.entitys.TransactionDemo;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.repos.TransactionErrorLogRepository;
+import com.repos.TransactionDemoRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TransactionProcessorService {
@@ -29,31 +34,30 @@ public class TransactionProcessorService {
 
     private final ThreadPoolConfigService threadPoolConfigService;
 
+    private final TransactionDemoRepository transactionDemoRepository;
+
+    @Transactional
     public void processTransaction(String message) {
-        // Đảm bảo rằng thread pool được điều chỉnh nếu cấu hình DB thay đổi
-        threadPoolConfigService.adjustPoolSizeIfChanged();
-
-        // Chuyển giao dịch vào Queue để đợi xử lý
         try {
-            queue.put(new TransactionMessage(message));  // Sử dụng BlockingQueue để đẩy giao dịch vào queue
-        } catch (InterruptedException e) {
-            // Log lỗi nếu không thể thêm vào queue
-            System.err.println("Error adding transaction to queue: " + e.getMessage());
+            // Parse message and create transaction
+            TransactionDemo transaction = parseTransaction(message);
+            
+            // Save transaction
+            transactionDemoRepository.save(transaction);
+            
+            log.info("Successfully processed transaction: {}", transaction.getId());
+        } catch (Exception e) {
+            log.error("Error processing transaction: {}", e.getMessage());
+            throw new RuntimeException("Failed to process transaction", e);
         }
+    }
 
-        // Submit task vào thread pool
-        threadPoolConfigService.submitTask(() -> {
-            try {
-                // Lấy giao dịch từ queue và xử lý
-                TransactionMessage transactionMessage = queue.take();  // Lấy giao dịch từ queue
-                // Xử lý giao dịch
-                processAndSaveTransaction(transactionMessage);
-            } catch (Exception e) {
-                // Gửi message lỗi sang DLT
-                kafkaTemplate.send("transaction_error", message);
-                // Không ack, để offset không commit (tuỳ config, hoặc commit thủ công)
-            }
-        });
+    private TransactionDemo parseTransaction(String message) {
+        // Implement message parsing logic
+        // This is a placeholder for actual implementation
+        TransactionDemo transaction = new TransactionDemo();
+        // Set transaction properties from message
+        return transaction;
     }
 
     private void processAndSaveTransaction(TransactionMessage transactionMessage) {
@@ -72,9 +76,8 @@ public class TransactionProcessorService {
         } catch (Exception e) {
             // Ghi vào bảng log
             errorLogRepository.save(new TransactionErrorLog(
-                    UUID.randomUUID(),
+                    UUID.randomUUID().toString(),
                     extractTransactionId(transactionMessage.getMessage()),
-                    e.getMessage(),
                     transactionMessage.getMessage(),
                     Instant.now()
             ));

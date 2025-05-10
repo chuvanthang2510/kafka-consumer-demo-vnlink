@@ -1,0 +1,105 @@
+spring:
+  application:
+    name: transaction-consumer
+  kafka:
+    consumer:
+      bootstrap-servers: localhost:9092
+      group-id: transaction-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+        # Tối ưu performance
+        max.poll.records: 500
+        fetch.min.bytes: 1
+        fetch.max.wait.ms: 500
+        # Tối ưu memory
+        max.partition.fetch.bytes: 1048576
+        receive.buffer.bytes: 32768
+        # Tối ưu reliability
+        enable.auto.commit: false
+        isolation.level: read_committed
+    producer:
+      bootstrap-servers: localhost:9092
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      # Tối ưu producer
+      acks: all
+      retries: 3
+      batch-size: 16384
+      buffer-memory: 33554432
+      compression-type: snappy
+
+kafka:
+  topic:
+    transaction: transaction_logs
+    retry: transaction_retry
+    dead-letter: transaction_dead_letter
+  consumer:
+    group-id: transaction-group
+    concurrency: 3
+    batch-size: 500
+    poll-timeout: 5000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus
+      base-path: /actuator
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+    prometheus:
+      enabled: true
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      transactionProcessor:
+        failureRateThreshold: 50
+        minimumNumberOfCalls: 10
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 5s
+        permittedNumberOfCallsInHalfOpenState: 3
+        slidingWindowSize: 10
+        slidingWindowType: COUNT_BASED
+        registerHealthIndicator: true
+  retry:
+    instances:
+      transactionProcessor:
+        maxAttempts: 3
+        waitDuration: 1s
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+        retryExceptions:
+          - java.io.IOException
+          - org.springframework.kafka.KafkaException
+  ratelimiter:
+    instances:
+      transactionProcessor:
+        limitForPeriod: 100
+        limitRefreshPeriod: 1s
+        timeoutDuration: 0s
+
+logging:
+  level:
+    root: INFO
+    com: DEBUG
+    org.springframework.kafka: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/transaction-consumer.log
+    max-size: 10MB
+    max-history: 7 
