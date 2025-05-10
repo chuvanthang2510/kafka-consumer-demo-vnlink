@@ -203,6 +203,11 @@
             <set />
           </value>
         </entry>
+        <entry key="$PROJECT_DIR$/BUSINESS_FLOW.md">
+          <value>
+            <set />
+          </value>
+        </entry>
         <entry key="$PROJECT_DIR$/docker-compose.yml">
           <value>
             <set />
@@ -344,6 +349,11 @@
           </value>
         </entry>
         <entry key="$PROJECT_DIR$/src/main/resources/application.yml">
+          <value>
+            <set />
+          </value>
+        </entry>
+        <entry key="$PROJECT_DIR$/target/classes/application.properties">
           <value>
             <set />
           </value>
